@@ -7,7 +7,7 @@ export interface Data {
 export type Deactivations = Data;
 
 export interface FormData {
-  [key: string]: "active" | "deactivated" | "consequence";
+  [key: string]: boolean;
 }
 
 export interface DependencyTree {

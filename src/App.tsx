@@ -1,32 +1,21 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import styled from "styled-components";
 import { data, dependencyTree, initialDeactivations } from "./mock-data";
 import Toggle from "./Toggle";
-import { deactivationsToFormData, formDataToDeactivations } from "./utils";
+import {
+  deactivationsToFormData,
+  formDataToDeactivations,
+  getAncestors,
+} from "./utils";
 
 function App() {
   const { reset, handleSubmit, setValue, control, watch } = useForm({
-    defaultValues: deactivationsToFormData(data, initialDeactivations, dependencyTree),
+    defaultValues: deactivationsToFormData(data, initialDeactivations),
   });
 
   const onSubmit = (formdata: any) => {
     console.log(formDataToDeactivations(data, formdata));
   };
-
-  // Handle dependencies
-  useEffect(() => {
-    const sub = watch((value, { name }) => {
-      if (!name || !dependencyTree[name]) return;
-
-      dependencyTree[name].forEach((item) =>
-        setValue(item, value[name] === "active" ? "active" : "consequence")
-      );
-    });
-    return () => {
-      sub.unsubscribe();
-    };
-  }, [watch, setValue]);
 
   return (
     <Wrapper onSubmit={handleSubmit(onSubmit)}>
@@ -34,17 +23,11 @@ function App() {
         {data.modules.map((module) => (
           <Module key={module}>
             <span>{module}</span>
-            <Controller
+            <Toggle
               control={control}
               name={module}
-              render={({ field: { value } }) => (
-                <Toggle
-                  isSelected={value === "active"}
-                  onChange={(isSelected) => {
-                    setValue(module, isSelected ? "active" : "deactivated");
-                  }}
-                  disabled={value === "consequence"}
-                />
+              disabled={watch(getAncestors(dependencyTree, module)).some(
+                (value) => value === false
               )}
             />
           </Module>
@@ -55,17 +38,11 @@ function App() {
         {data.objectives.map((objective) => (
           <Objective key={objective}>
             <span>{objective}</span>
-            <Controller
+            <Toggle
               control={control}
               name={objective}
-              render={({ field: { value } }) => (
-                <Toggle
-                  isSelected={value === "active"}
-                  onChange={(isSelected) => {
-                    setValue(objective, isSelected ? "active" : "deactivated");
-                  }}
-                  disabled={value === "consequence"}
-                />
+              disabled={watch(getAncestors(dependencyTree, objective)).some(
+                (value) => value === false
               )}
             />
           </Objective>
@@ -73,24 +50,20 @@ function App() {
       </div>
 
       <div>
-        {data.activities.map((activity) => (
-          <Activity key={activity}>
-            <span>{activity}</span>
-            <Controller
-              control={control}
-              name={activity}
-              render={({ field: { value } }) => (
-                <Toggle
-                  isSelected={value === "active"}
-                  onChange={(isSelected) => {
-                    setValue(activity, isSelected ? "active" : "deactivated");
-                  }}
-                  disabled={value === "consequence"}
-                />
-              )}
-            />
-          </Activity>
-        ))}
+        {data.activities.map((activity) => {
+          return (
+            <Activity key={activity}>
+              <span>{activity}</span>
+              <Toggle
+                control={control}
+                name={activity}
+                disabled={watch(getAncestors(dependencyTree, activity)).some(
+                  (value) => value === false
+                )}
+              />
+            </Activity>
+          );
+        })}
       </div>
 
       <ControlsWrapper>
@@ -108,7 +81,7 @@ function App() {
           onClick={() => {
             Object.keys(data).forEach((lvl) => {
               data[lvl as "modules" | "objectives" | "activities"].forEach(
-                (item) => setValue(item, "active")
+                (item) => setValue(item, true)
               );
             });
           }}
